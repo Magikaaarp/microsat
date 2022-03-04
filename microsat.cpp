@@ -34,7 +34,7 @@ struct solver
     int *DB, nVars, nClauses, mem_used, mem_fixed, mem_max;
     int maxLemmas, nLemmas, *buffer, nConflicts, *model;
     int *reason, *falseStack, *fals, *first, *forced, *processed, *assigned;
-    int *next, *prev, head, res, fast, slow;
+    int *next, *prev, head, fast, slow;
 };
 
 void unassign (struct solver* S, int lit)
@@ -159,7 +159,6 @@ int implied (struct solver* S, int lit)
 
 int* analyze (struct solver* S, int* clause)
 {                                                                     // Compute a resolvent from falsified clause 
-    S->res++;
 	S->nConflicts++;                                                  // Bump restarts and update the statistic
     while (*clause)
 		bump(S, *(clause++));                                        // MARK all literals in the falsified clause
@@ -253,7 +252,6 @@ int propagate (struct solver* S)
 int solve (struct solver* S)
 {                                                                      // Determine satisfiability 
     int decision = S->head;
-    S->res = 0;                                                        // Initialize the solver
     for (;;)
     {                                                                  // Main solve loop
         int old_nLemmas = S->nLemmas;                                  // Store nLemmas to see whether propagate adds lemmas
@@ -263,8 +261,7 @@ int solve (struct solver* S)
             decision = S->head;                                        // Reset the decision heuristic to head
             if (S->fast > (S->slow / 100) * 125)
             {                                                          // If fast average is substantially larger than slow average
-//				printf("c restarting after %i conflicts (%i %i) %i\n", S->res, S->fast, S->slow, S->nLemmas > S->maxLemmas);
-                S->res = 0;
+//				printf("c restarting after ** conflicts (%i %i) %i\n", S->fast, S->slow, S->nLemmas > S->maxLemmas);
                 S->fast = (S->slow / 100) * 125;
                 restart (S);                                           // Restart and update the averages
                 if (S->nLemmas > S->maxLemmas)
