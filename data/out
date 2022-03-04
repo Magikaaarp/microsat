@@ -1,8 +1,8 @@
 s UNSATISFIABLE
-c statistics of data/aim-50-1_6-no-1.cnf: mem: 1047 conflicts: 12 max_lemmas: 2000
+c statistics of aim-50-1_6-no-1.cnf: mem: 1047 conflicts: 12 max_lemmas: 2000
 s SATISFIABLE
-c statistics of data/aim-50-6_0-yes1-2.cnf: mem: 2477 conflicts: 28 max_lemmas: 2000
+c statistics of aim-50-6_0-yes1-2.cnf: mem: 2477 conflicts: 28 max_lemmas: 2000
 s UNSATISFIABLE
-c statistics of data/aim-200-1_6-no-1.cnf: mem: 4078 conflicts: 28 max_lemmas: 2000
+c statistics of aim-200-1_6-no-1.cnf: mem: 4078 conflicts: 28 max_lemmas: 2000
 s SATISFIABLE
-c statistics of data/aim-200-1_6-yes1-3.cnf: mem: 4304 conflicts: 63 max_lemmas: 2000
+c statistics of aim-200-1_6-yes1-3.cnf: mem: 4304 conflicts: 63 max_lemmas: 2000
