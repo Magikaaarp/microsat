@@ -199,7 +199,8 @@ build:
     S->slow -= S->slow >> 15;
     S->slow += lbd <<  5;                                             // Update the slow moving average
     while (S->assigned > S->processed)                                // Loop over all unprocessed literals
-        unassign (S, *(--S->assigned));                               // Unassign all lits between tail & head
+        unassign (S, *(S->assigned--));                               // Unassign all lits between tail & head
+    unassign (S, *S->assigned);                                       // Assigned now equal to processed
     S->buffer[size] = 0;                                              // Terminate the buffer (and potentially print clause)
     return addClause(S, S->buffer, size, 0);                          // Add new conflict clause to redundant DB
 }
