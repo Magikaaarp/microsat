@@ -99,8 +99,7 @@ void reduceDB (struct solver *S, int k)
     while (S->nLemmas > S->maxLemmas)
         S->maxLemmas += 300;                                         // Allow more lemmas in the future
     S->nLemmas = 0;                                                  // Reset the number of lemmas
-    int i;
-    for (i = -S->nVars; i <= S->nVars; i++)
+    for (int i = -S->nVars; i <= S->nVars; i++)
     {                                                                // Loop over the variables
         if (i == 0) continue;
         int *watch = &S->first[i];                                   // Get the pointer to the first watched clause
@@ -112,7 +111,7 @@ void reduceDB (struct solver *S, int k)
     }
     int old_used = S->mem_used;
     S->mem_used = S->mem_fixed;                                      // Virtually remove all lemmas
-    for (i = S->mem_fixed + 2; i < old_used; i += 3)
+    for (int i = S->mem_fixed + 2; i < old_used; i += 3)
     {                                                                // While the old memory contains lemmas
         int count = 0, head = i;                                     // Get the lemma to which the head is pointing
         while (S->DB[i])
@@ -180,7 +179,7 @@ int* analyze (struct solver* S, int* clause)
     }                                                                 // Unassign the tail of the stack
 build:
     int size = 0, lbd = 0, flag = 0;                                  // Build conflict clause; Empty the clause buffer
-    int* p = S->processed = S->assigned;                              // Loop from tail to front
+    int *p = S->processed = S->assigned;                              // Loop from tail to front
     while (p >= S->forced)
     {                                                                 // Only literals on the stack can be MARKed
         if ((S->fals[*p] == MARK) && !implied (S, *p))
@@ -188,7 +187,7 @@ build:
             S->buffer[size++] = *p;
             flag = 1;
         }                                                             // Add literal to conflict clause buffer
-        if (!S->reason[abs (*p)])
+        if (!S->reason[abs(*p)])
         {
             lbd += flag;
             flag = 0;                                                 // Increase LBD for a decision with a true flag
@@ -201,8 +200,7 @@ build:
     S->slow -= S->slow >> 15;
     S->slow += lbd <<  5;                                             // Update the slow moving average
     while (S->assigned > S->processed)                                // Loop over all unprocessed literals
-        unassign (S, *(S->assigned--));                               // Unassign all lits between tail & head
-    unassign (S, *S->assigned);                                       // Assigned now equal to processed
+        unassign (S, *(--S->assigned));                               // Unassign all lits between tail & head
     S->buffer[size] = 0;                                              // Terminate the buffer (and potentially print clause)
     return addClause(S, S->buffer, size, 0);                          // Add new conflict clause to redundant DB
 }
@@ -286,7 +284,7 @@ int solve (struct solver* S)
 
 void initCDCL(struct solver* S, int n, int m)
 {
-    if (n < 1) n = 1;                       // The code assumes that there is at least one variable
+    if (n < 1)      n = 1;                  // The code assumes that there is at least one variable
     S->nVars          = n;                  // Set the number of variables
     S->nClauses       = m;                  // Set the number of clauses
     S->mem_max        = 1 << 30;            // Set the initial maximum memory
