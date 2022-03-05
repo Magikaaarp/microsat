@@ -264,9 +264,9 @@ int solve(struct solver* S)
             {                                                          // If fast average is substantially larger than slow average
 //				printf("c restarting after ** conflicts (%i %i) %i\n", S->fast, S->slow, S->nLemmas > S->maxLemmas);
                 S->fast = (S->slow / 100) * 125;
-                restart(S);                                           // Restart and update the averages
+                restart(S);                                            // Restart and update the averages
                 if (S->nLemmas > S->maxLemmas)
-					reduceDB(S, 6);                                   // Reduce the DB when it contains too many lemmas
+					reduceDB(S, 6);                                    // Reduce the DB when it contains too many lemmas
             }
         }
         while (S->fals[decision] || S->fals[-decision])                // As long as the temporay decision is assigned
@@ -282,38 +282,38 @@ int solve(struct solver* S)
 
 void initCDCL(struct solver* S, int n, int m)
 {
-    if (n < 1)      n = 1;                  // The code assumes that there is at least one variable
-    S->nVars          = n;                  // Set the number of variables
-    S->nClauses       = m;                  // Set the number of clauses
-    S->mem_max        = 1 << 30;            // Set the initial maximum memory
-    S->mem_used       = 0;                  // The number of integers allocated in the DB
-    S->nLemmas        = 0;                  // The number of learned clauses -- redundant means learned
-    S->nConflicts     = 0;                  // Number of conflicts used to update scores
-    S->maxLemmas      = 2000;               // Initial maximum number of learned clauses
-    S->fast = S->slow = 1 << 24;            // Initialize the fast and slow moving averages
+    if (n < 1)      n = 1;                                // The code assumes that there is at least one variable
+    S->nVars          = n;                                // Set the number of variables
+    S->nClauses       = m;                                // Set the number of clauses
+    S->mem_max        = 1 << 30;                          // Set the initial maximum memory
+    S->mem_used       = 0;                                // The number of integers allocated in the DB
+    S->nLemmas        = 0;                                // The number of learned clauses -- redundant means learned
+    S->nConflicts     = 0;                                // Number of conflicts used to update scores
+    S->maxLemmas      = 2000;                             // Initial maximum number of learned clauses
+    S->fast = S->slow = 1 << 24;                          // Initialize the fast and slow moving averages
 
-    S->DB = (int *) malloc (sizeof (int) * S->mem_max); // Allocate the initial database
-    S->model       = getMemory (S, n+1);                // Full assignment of the (Boolean) variables (initially set to fals)
-    S->next        = getMemory (S, n+1);                // Next variable in the heuristic order
-    S->prev        = getMemory (S, n+1);                // Previous variable in the heuristic order
-    S->buffer      = getMemory (S, n  );                // A buffer to store a temporary clause
-    S->reason      = getMemory (S, n+1);                // Array of clauses
-    S->falseStack  = getMemory (S, n+1);                // Stack of falsified literals -- this pointer is never changed
-    S->forced      = S->falseStack;                     // Points inside *falseStack at first decision (unforced literal)
-    S->processed   = S->falseStack;                     // Points inside *falseStack at first unprocessed literal
-    S->assigned    = S->falseStack;                     // Points inside *falseStack at last unprocessed literal
+    S->DB = (int *) malloc (sizeof (int) * S->mem_max);   // Allocate the initial database
+    S->model       = getMemory (S, n+1);                  // Full assignment of the (Boolean) variables (initially set to fals)
+    S->next        = getMemory (S, n+1);                  // Next variable in the heuristic order
+    S->prev        = getMemory (S, n+1);                  // Previous variable in the heuristic order
+    S->buffer      = getMemory (S, n  );                  // A buffer to store a temporary clause
+    S->reason      = getMemory (S, n+1);                  // Array of clauses
+    S->falseStack  = getMemory (S, n+1);                  // Stack of falsified literals -- this pointer is never changed
+    S->forced      = S->falseStack;                       // Points inside *falseStack at first decision (unforced literal)
+    S->processed   = S->falseStack;                       // Points inside *falseStack at first unprocessed literal
+    S->assigned    = S->falseStack;                       // Points inside *falseStack at last unprocessed literal
     S->fals        = getMemory (S, 2*n+1); S->fals += n;  // Labels for variables, non-zero means false 
     S->first       = getMemory (S, 2*n+1); S->first += n; // Offset of the first watched clause （链式栈的栈顶标志）
-    S->DB[S->mem_used++] = 0;                           // Make sure there is a 0 before the clauses are loaded.
+    S->DB[S->mem_used++] = 0;                             // Make sure there is a 0 before the clauses are loaded.
 
     for (int i = 1; i <= n; i++)
-    {                                                   // Initialize the main datastructures:
+    {                                                     // Initialize the main datastructures:
         S->prev[i] = i-1;
-        S->next[i-1] = i;                               // the double-linked list for variable-move-to-front,
-        S->model[i] = S->fals[-i] = S->fals[i] = 0;     // the model (phase-saving), the fals array,
+        S->next[i-1] = i;                                 // the double-linked list for variable-move-to-front,
+        S->model[i] = S->fals[-i] = S->fals[i] = 0;       // the model (phase-saving), the fals array,
         S->first[i] = S->first[-i] = END;
-    }                                                   // and first (watch pointers).
-	S->head = n;                                        // Initialize the head of the double-linked list
+    }                                                     // and first (watch pointers).
+	S->head = n;                                          // Initialize the head of the double-linked list
 }
 
 static void read_until_new_line (FILE * input)
