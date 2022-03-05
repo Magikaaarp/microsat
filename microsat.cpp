@@ -37,33 +37,6 @@ struct solver
     int *next, *prev, head, fast, slow;
 };
 
-void unassign (struct solver* S, int lit)
-{
-    S->fals[lit] = 0;
-}
-
-void restart (struct solver* S)
-{                                                                    // unassign all variables
-    while (S->assigned > S->forced)
-        unassign(S, *(--S->assigned));                               // Remove all unforced fals lits from falseStack
-    S->processed = S->forced;                                        // Reset the processed pointer
-}
-
-void assign (struct solver* S, int* reason, int forced)
-{                                                                    // Make the first literal of the reason true
-    int lit = reason[0];                                             // Let lit be the first literal in the reason
-    S->fals[-lit] = forced ? IMPLIED : 1;                            // Mark lit as true and IMPLIED if forced
-    *(S->assigned++) = -lit;                                         // Push it on the assignment stack
-    S->reason[abs (lit)] = (int) ((reason)-S->DB);               // Set the reason clause of lit
-    S->model [abs (lit)] = (lit > 0);
-}                                                                    // Mark the literal as true in the model
-
-void addWatch(struct solver* S, int lit, int mem)
-{               
-    S->DB[mem] = S->first[lit];                                      // Add a watch pointer to a clause containing lit
-    S->first[lit] = mem;                                             // By updating the database and the pointers
-}               
-
 int* getMemory (struct solver* S, int mem_size)
 {                                                                    // Allocate memory of size mem_size
     if (S->mem_used + mem_size > S->mem_max)
@@ -75,6 +48,33 @@ int* getMemory (struct solver* S, int mem_size)
     S->mem_used += mem_size;                                         // Update the size of the used memory
     return store;
 }
+
+void unassign (struct solver* S, int lit)
+{
+    S->fals[lit] = 0;
+}
+
+void assign (struct solver* S, int* reason, bool forced)
+{                                                                    // Make the first literal of the reason true
+    int lit = reason[0];                                             // Let lit be the first literal in the reason
+    S->fals[-lit] = forced ? IMPLIED : 1;                            // Mark lit as true and IMPLIED if forced
+    *(S->assigned++) = -lit;                                         // Push it on the assignment stack
+    S->reason[abs (lit)] = (int) ((reason)-S->DB);                   // Set the reason clause of lit
+    S->model [abs (lit)] = (lit > 0);                                // Mark the literal as true in the model
+}
+
+void restart (struct solver* S)
+{                                                                    // unassign all variables
+    while (S->assigned > S->forced)
+        unassign(S, *(--S->assigned));                               // Remove all unforced fals lits from falseStack
+    S->processed = S->forced;                                        // Reset the processed pointer
+}
+
+void addWatch(struct solver* S, int lit, int mem)
+{               
+    S->DB[mem] = S->first[lit];                                      // Add a watch pointer to a clause containing lit
+    S->first[lit] = mem;                                             // By updating the database and the pointers
+}               
 
 int* addClause (struct solver* S, int* in, int size, int irr)        // 子句结构：【变量0链表指针，变量1链表指针，[不定长子句变元]，0】
 {                                                                    // Adds a clause stored in *in of size size
@@ -88,9 +88,9 @@ int* addClause (struct solver* S, int* in, int size, int irr)        // 子句�
     for (i = 0; i < size; i++)
         clause[i] = in[i];
     clause[i] = 0;                                                   // Copy the clause from the buffer to the database
-    if (irr)
+    if (irr)                                                         //// If the clause is from the input
         S->mem_fixed = S->mem_used;
-    else S->nLemmas++;                                               // Update the statistics
+    else S->nLemmas++;                                               //// The number of learned clauses increased
     return clause;
 }                                                                    // Return the pointer to the clause in the database
 
@@ -130,10 +130,10 @@ void bump (struct solver* S, int lit)
     {
         S->fals[lit] = MARK;                                         // MARK the literal as involved if not a top-level unit
         int var = abs(lit);
-        if (var != S->head)
-        {                                                            // In case var is not already the head of the list
-            S->prev[S->next[var]] = S->prev[var];                    // Update the prev link, and
-            S->next[S->prev[var]] = S->next[var];                    // Update the next link, and
+        if (var != S->head)                                          // In case var is not already the head of the list
+        {
+            S->prev[S->next[var]] = S->prev[var];                    //// Delete var from the link
+            S->next[S->prev[var]] = S->next[var];                    
             S->next[S->head] = var;                                  // Add a next link to the head, and
             S->prev[var] = S->head;
             S->head = var;                                           // Make var the new head
@@ -141,36 +141,36 @@ void bump (struct solver* S, int lit)
     }
 }
 
-int implied (struct solver* S, int lit)
+bool implied (struct solver* S, int lit)
 {                                                                     // Check if lit(eral) is implied by MARK literals 
     if (S->fals[lit] > MARK)
 		return (S->fals[lit] & MARK);                                 // If checked before return old result
-    if (!S->reason[abs (lit)]) return 0;                              // In case lit is a decision, it is not implied
-    int *p = (S->DB + S->reason[abs (lit)]);                      // Get the reason of lit(eral)
+    if (!S->reason[abs (lit)]) return false;                              // In case lit is a decision, it is not implied
+    int *p = (S->DB + S->reason[abs (lit)]);                          // Get the reason of lit(eral)
     while (*(++p))                                                    // While there are literals in the reason
         if ((S->fals[*p] ^ MARK) && !implied (S, *p))
 		{                                                             // Recursively check if non-MARK literals are implied
         	S->fals[lit] = IMPLIED - 1;
-			return 0;
+			return false;
 		}                                                             // Mark and return not implied (denoted by IMPLIED - 1)
     S->fals[lit] = IMPLIED;
-	return 1;
+	return true;
 }                                                                     // Mark and return that the literal is implied
 
 int* analyze (struct solver* S, int* clause)
 {                                                                     // Compute a resolvent from falsified clause 
 	S->nConflicts++;                                                  // Bump restarts and update the statistic
     while (*clause)
-		bump(S, *(clause++));                                        // MARK all literals in the falsified clause
+		bump(S, *(clause++));                                         // MARK all literals in the falsified clause
     while (S->reason[abs(*(--S->assigned))])
-	{                                                                // Loop on variables on falseStack until the last decision
+	{                                                                 // Loop on variables on falseStack until the last decision
     	if (S->fals[*S->assigned] == MARK)
-		{                                                            // If the tail of the stack is MARK
-        	int *check = S->assigned;                                // Pointer to check if first-UIP is reached
-            while (S->fals[*(--check)]!=MARK)                        // Check for a MARK literal before decision
+		{                                                             // If the tail of the stack is MARK
+        	int *check = S->assigned;                                 // Pointer to check if first-UIP is reached
+            while (S->fals[*(--check)]!=MARK)                         // Check for a MARK literal before decision
                 if (!S->reason[abs(*check)])
-                    goto build;                                      // Otherwise it is the first-UIP so break
-            clause = S->DB + S->reason[abs(*S->assigned)] + 1;           // Get the reason and ignore first literal
+                    goto build;                                       // Otherwise it is the first-UIP so break
+            clause = S->DB + S->reason[abs(*S->assigned)] + 1;        // Get the reason and ignore first literal
             while (*clause)
                 bump (S, *(clause++));
         }                                                             // MARK all literals in reason
@@ -205,16 +205,16 @@ build:                                                                //// Now S
     return addClause(S, S->buffer, size, 0);                          // Add new conflict clause to redundant DB
 }
 
-int propagate(struct solver* S)
-{                                                               // Performs unit propagation 
-    int forced = S->reason[abs(*S->processed)];                 // Initialize forced flag
+int propagate(struct solver* S)                                 // Performs unit propagation
+{
+    bool forced = S->reason[abs(*S->processed)];                //// Only if no decision was made might [forced] be true
     while (S->processed < S->assigned)
     {                                                           // While unprocessed false literals
         int lit = *(S->processed++);                            //// lit is falsified but not propagated yet
         int *watch = &S->first[lit];                            //// Handle all the clauses watching lit (remove the associating watchers)
         while (*watch != END)
         {                                                       
-            int unit=1;                                         //// flag
+            bool unit = true;
             int *clause = S->DB + *watch;	                    // Get the clause from DB
             if (clause[-1]==0) clause+=2;                       // Set the pointer to the first literal in the clause
             else clause++;
@@ -222,9 +222,9 @@ int propagate(struct solver* S)
             for (int i=2;unit&&clause[i];i++)                   // Scan the non-watched literals
                 if (!S->fals[clause[i]])
                 {                                               // When clause[i] is not false, it is either true or unset
-                    unit = 0;
+                    unit = false;
                     clause[1] = clause[i];
-					clause[i] = lit;                            // Swap literals
+					clause[i] = lit;                            //// Finish swapping literals (for backtracking)
                     int store = *watch;                         // Store the old watch
                     *watch = S->DB[*watch];                     // Remove the watch from the list of lit
                     addWatch(S, clause[1], store); 
@@ -235,12 +235,12 @@ int propagate(struct solver* S)
                 watch = (S->DB + *watch);                       // Place lit at clause[1] and update next watch
                 if (S->fals[-clause[0]]) continue;              // If the other watched literal is satisfied, continue
                 else if (!S->fals[clause[0]])                   //// If the other watched literal is unassigned,
-                    assign (S, clause, forced);                 //// the clause is unit for clause[0]
+                    assign(S, clause, forced);                  //// the clause is unit for clause[0], thus assign
                 else                                            //// If the other watched literal is falsified,
                 {                                               //// a conflict is found
                     if (forced) return UNSAT;                   // Found a root level conflict -> UNSAT
-                    int* lemma = analyze(S, clause);	        // Analyze the conflict return a conflict clause
-                    if (!lemma[1]) forced = 1;                  // In case a unit clause is found, set forced flag
+                    int* lemma = analyze(S, clause);            // Analyze the conflict return a conflict clause
+                    if (!lemma[1]) forced = true;               //// In case the conflict clause is unit set forced flag
                     assign(S, lemma, forced);
                     break;
                 }
