@@ -77,7 +77,13 @@ void reduceDB (struct solver* S, int k) {                     // Removes "less u
     while (*watch != END)                                     // As long as there are watched clauses
       if (*watch < S->mem_fixed) watch = (S->DB + *watch);    // Remove the watch if it points to a lemma
       else                      *watch =  S->DB[  *watch]; }  // Otherwise (meaning an input clause) go to next watch
-
+/*
+The above two comments should be swapped
+*/
+/*
+while (*watch >= S->mem_fixed)                               // According to the characteristics of stack
+	*watch =  S->DB[*watch];
+*/
   int old_used = S->mem_used; S->mem_used = S->mem_fixed;     // Virtually remove all lemmas
   for (i = S->mem_fixed + 2; i < old_used; i += 3) {          // While the old memory contains lemmas
     int count = 0, head = i;                                  // Get the lemma to which the head is pointing
@@ -129,11 +135,6 @@ int* analyze (struct solver* S, int* clause) {         // Compute a resolvent fr
   while (S->assigned > S->processed)                   // Loop over all unprocessed literals
     unassign (S, *(S->assigned--));                    // Unassign all lits between tail & head
   unassign (S, *S->assigned);                          // Assigned now equal to processed
-  /*
-  //since S->assigned pointing at a unassigned position, so perhaps it should be rewritten as following?
-  while (S->assigned > S->processed)                
-    unassign (S, *(--S->assigned));                 
-  */
   S->buffer[size] = 0;                                 // Terminate the buffer (and potentially print clause)
   return addClause (S, S->buffer, size, 0); }          // Add new conflict clause to redundant DB
 
