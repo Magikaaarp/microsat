@@ -167,21 +167,22 @@ int* analyze (struct solver* S, int* clause)                          // Compute
     	if (S->fals[*S->assigned] == MARK)
 		{                                                             // If the tail of the stack is MARK
         	int *check = S->assigned;                                 // Pointer to check if first-UIP is reached
-            // while (S->fals[*(--check)]!=MARK)                      // Check for a MARK literal before decision
-            //     if (!S->reason[abs(*check)])
-            //         goto build;                                    // Otherwise it is the first-UIP so break
+            // while (S->fals[*(--check)]!=MARK)                      //// Check for only one MARK literal before decision (included)
+            //     if (!S->reason[abs(*check)])                       //// If so, S->assigned is the first-UIP
+            //         goto build;
             while (S->reason[abs(*(--check))])                        // An identical process
                 if (S->fals[*check]==MARK) break;
-            if (!S->reason[abs(*(check))]&&S->fals[*(check)]!=MARK) break;
+            if (!S->reason[abs(*(check))] && S->fals[*(check)]!=MARK) break;
             clause = S->DB + S->reason[abs(*S->assigned)];            //// Spread the MARK all the other literals in the reason[*S->assighed]
             while (*(++clause))
                 bump (S, *clause);
         }                                                             // MARK all literals in reason
         unassign(S, *S->assigned);                                    // Unassign the tail of the stack
     }
-build:                                                                //// Now S->assigned pointed at the first-UIP (may be decision)
+build:                                                                //// Now S->assigned pointed at the first-UIP (may be decision) (not unassigned)
+                                                                      //// MARKs form an initial conflict clause
+    int *p = S->processed = S->assigned;                              //// Since the first-UIP must be propagated, now S->processed > S->assigned
     int size = 0, lbd = 0, flag = 0;                                  // Build conflict clause; Empty the clause buffer
-    int *p = S->processed = S->assigned;                              // Loop from tail to front
     while (p >= S->forced)
     {                                                                 // Only literals on the stack can be MARKed
         if ((S->fals[*p] == MARK) && !implied (S, *p))
@@ -193,7 +194,7 @@ build:                                                                //// Now S
         {
             lbd += flag;
             flag = 0;                                                 // Increase LBD for a decision with a true flag
-            if (size == 1) S->processed = p;
+            if (size == 1) S->processed = p;                          //// Update the position for backtracking
         }                                                             // And update the processed pointer
         S->fals[*(p--)] = 1;
     }                                                                 // Reset the MARK flag for all variables on the stack
@@ -201,8 +202,8 @@ build:                                                                //// Now S
     S->fast += lbd << 15;                                             // Update the fast moving average
     S->slow -= S->slow >> 15;
     S->slow += lbd <<  5;                                             // Update the slow moving average
-    while (S->assigned > S->processed)                                // Loop over all unprocessed literals
-        unassign (S, *(S->assigned--));                               // Unassign all lits between tail & head
+    while (S->assigned > S->processed)                                //// Perform non-chronological backtracking as described
+        unassign (S, *(S->assigned--));
     unassign (S, *S->assigned);                                       // Assigned now equal to processed
     S->buffer[size] = 0;                                              // Terminate the buffer (and potentially print clause)
     return addClause(S, S->buffer, size, 0);                          // Add new conflict clause to redundant DB
