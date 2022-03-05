@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-enum { END = -9, UNSAT = 0, SAT = 1, MARK = 2, IMPLIED = 6 };
+enum { END = -9, UNSAT = 0, SAT = 1, MARK = 2, IMPLIED = 6, NOT_IMPLIED = 5};
 
 struct solver
 {
@@ -124,38 +124,38 @@ void reduceDB (struct solver *S, int k)
     }
 }                                                                    // If the latter is smaller than k, add it back
 
-void bump (struct solver* S, int lit)
-{                                                                    // Move the variable to the front of the decision list 
+void bump (struct solver* S, int lit)                                // Move the variable to the front of the decision list
+{
     if (S->fals[lit] != IMPLIED)
     {
         S->fals[lit] = MARK;                                         // MARK the literal as involved if not a top-level unit
         int var = abs(lit);
         if (var != S->head)                                          // In case var is not already the head of the list
         {
-            S->prev[S->next[var]] = S->prev[var];                    //// Delete var from the link
+            S->prev[S->next[var]] = S->prev[var];                    //// Delete [var] from the link
             S->next[S->prev[var]] = S->next[var];                    
-            S->next[S->head] = var;                                  // Add a next link to the head, and
+            S->next[S->head] = var;                                  //// Add [var] next to the head, and make it new head
             S->prev[var] = S->head;
-            S->head = var;                                           // Make var the new head
+            S->head = var;
         }
     }
 }
 
-bool implied (struct solver* S, int lit)
-{                                                                     // Check if lit(eral) is implied by MARK literals 
-    if (S->fals[lit] > MARK)
-		return (S->fals[lit] & MARK);                                 // If checked before return old result
-    if (!S->reason[abs (lit)]) return false;                              // In case lit is a decision, it is not implied
-    int *p = (S->DB + S->reason[abs (lit)]);                          // Get the reason of lit(eral)
-    while (*(++p))                                                    // While there are literals in the reason
+bool implied (struct solver* S, int lit)                              //// Check if lit(eral) is implied (to be false) by MARK literals
+{ 
+    if (S->fals[lit] > MARK)                                          // If checked before, return old result
+		return (S->fals[lit] == IMPLIED);
+    if (!S->reason[abs(lit)]) return false;                           // In case lit is a decision or unassigned, it is 'not implied'
+    int *p = (S->DB + S->reason[abs(lit)]);                           // Get the reason of lit(eral)
+    while (*(++p))                                                    //// Traverse the other literals in the reason
         if ((S->fals[*p] ^ MARK) && !implied (S, *p))
 		{                                                             // Recursively check if non-MARK literals are implied
-        	S->fals[lit] = IMPLIED - 1;
+        	S->fals[lit] = NOT_IMPLIED;
 			return false;
-		}                                                             // Mark and return not implied (denoted by IMPLIED - 1)
+		}
     S->fals[lit] = IMPLIED;
 	return true;
-}                                                                     // Mark and return that the literal is implied
+}
 
 int* analyze (struct solver* S, int* clause)
 {                                                                     // Compute a resolvent from falsified clause 
@@ -219,7 +219,7 @@ int propagate(struct solver* S)                                 // Performs unit
             if (clause[-1]==0) clause+=2;                       // Set the pointer to the first literal in the clause
             else clause++;
             if (clause[0]==lit) clause[0]=clause[1];            // Ensure that the other watched literal is in front
-            for (int i=2;unit&&clause[i];i++)                   // Scan the non-watched literals
+            for (int i=2; unit&&clause[i]; i++)                   // Scan the non-watched literals
                 if (!S->fals[clause[i]])
                 {                                               // When clause[i] is not false, it is either true or unset
                     unit = false;
