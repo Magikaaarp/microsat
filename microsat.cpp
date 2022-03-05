@@ -59,8 +59,8 @@ void assign(struct solver* S, int* reason, bool forced)
     int lit = reason[0];                                             // Let lit be the first literal in the reason
     S->fals[-lit] = forced ? IMPLIED : 1;                            // Mark lit as true and IMPLIED if forced
     *(S->assigned++) = -lit;                                         // Push it on the assignment stack
-    S->reason[abs(lit)] = (int)((reason)-S->DB);                   // Set the reason clause of lit
-    S->model [abs(lit)] = (lit > 0);                                // Mark the literal as true in the model
+    S->reason[abs(lit)] = (int)((reason)-S->DB);                     // Set the reason clause of lit
+    S->model [abs(lit)] = (lit > 0);                                 // Mark the literal as true in the model
 }
 
 void restart(struct solver* S)
@@ -76,7 +76,7 @@ void addWatch(struct solver* S, int lit, int mem)
     S->first[lit] = mem;                                             // By updating the database and the pointers
 }               
 
-int* addClause(struct solver* S, int* in, int size, int irr)        // 子句结构：【变量0链表next，变量1链表next，[不定长子句变元]，0】
+int* addClause(struct solver* S, int* in, int size, int irr) 
 {                                                                    // Adds a clause stored in *in of size size
     int i, used = S->mem_used;                                       // Store a pointer to the beginning of the clause
     int* clause = getMemory (S, size + 3) + 2;                       // Allocate memory for the clause in the database
@@ -103,25 +103,23 @@ void reduceDB(struct solver *S, int k)
     {                                                                // Loop over the variables
         if (i == 0) continue;
         int *watch = &S->first[i];                                   // Get the pointer to the first watched clause
-        while (*watch >= S->mem_fixed)                               // According to the characteristics of stack
+        while (*watch >= S->mem_fixed)                               // According to the characteristic of stack
 			*watch =  S->DB[*watch];                                 // Remove the watch if it points to a lemma
     }
     int old_used = S->mem_used;
     S->mem_used = S->mem_fixed;                                      // Virtually remove all lemmas
     for (int i = S->mem_fixed + 2; i < old_used; i += 3)
     {                                                                // While the old memory contains lemmas
-        int count = 0, head = i;                                     // Get the lemma to which the head is pointing
-        while (S->DB[i])
-        {
-            int lit = S->DB[i++];                                    // Count the number of literals
-            if ((lit > 0) == S->model[abs(lit)]) count++;
-        }                                                            // That are satisfied by the current model
-        if (count < k)
+        int count = 0, head = i, lit;                                // Get the lemma to which the head is pointing
+        while ((lit = S->DB[i++]))                                   // Count the number of literals that are satisfied by the current model
+            if ((lit > 0) == S->model[abs(lit)])
+                count++;
+        if (count < k)                                               // If the latter is smaller than k, add it back
             addClause(S, S->DB+head, i-head, 0);
     }
-}                                                                    // If the latter is smaller than k, add it back
+}
 
-void bump(struct solver* S, int lit)                                // Move the variable to the front of the decision list and MARK it
+void bump(struct solver* S, int lit)                                 // Move the variable to the front of the decision list and MARK it
 {
     if (S->fals[lit] != IMPLIED)
     {
@@ -138,7 +136,7 @@ void bump(struct solver* S, int lit)                                // Move the 
     }
 }
 
-bool implied(struct solver* S, int lit)                              //// Check if lit(eral) is implied (to be false) by MARK literals
+bool implied(struct solver* S, int lit)                               //// Check if lit(eral) is implied (to be false) by MARK literals
 { 
     if (S->fals[lit] > MARK)                                          // If checked before, return old result
 		return (S->fals[lit] == IMPLIED);
@@ -154,7 +152,7 @@ bool implied(struct solver* S, int lit)                              //// Check 
 	return true;
 }
 
-int* analyze(struct solver* S, int* clause)                          // Compute a resolvent from falsified clause
+int* analyze(struct solver* S, int* clause)                           // Compute a resolvent from falsified clause
 {
 	S->nConflicts++;                                                  // Bump restarts and update the statistic
     while (*clause)
@@ -201,7 +199,7 @@ build:                                                                //// Now S
     S->slow += lbd <<  5;                                             // Update the slow moving average
     while (S->assigned > S->processed)                                //// Perform non-chronological backtracking as described
         unassign(S, *(S->assigned--));
-    unassign(S, *S->assigned);                                       // Assigned now equal to processed
+    unassign(S, *S->assigned);                                        // Assigned now equal to processed
     S->buffer[size] = 0;                                              // Terminate the buffer (and potentially print clause)
     return addClause(S, S->buffer, size, 0);                          // Add new conflict clause to redundant DB
 }
@@ -342,8 +340,8 @@ int parse (struct solver* S, char* filename)
         if (tmp > 0 && tmp != EOF) 
             break;
         tmp = fscanf (input, "%*s\n");
-    } while (tmp != 2 && tmp != EOF);                                       // Skip it and read next line
-    initCDCL(S, S->nVars, S->nClauses);                                   // Allocate the main datastructures
+    } while (tmp != 2 && tmp != EOF);                                      // Skip it and read next line
+    initCDCL(S, S->nVars, S->nClauses);                                    // Allocate the main datastructures
     int nZeros = S->nClauses, size = 0;                                    // Initialize the number of clauses to read
     while (nZeros > 0)
     {                                                                      // While there are clauses in the file
