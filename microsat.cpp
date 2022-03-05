@@ -38,14 +38,14 @@ struct solver
 };
 
 int* getMemory (struct solver* S, int mem_size)
-{                                                                    // Allocate memory of size mem_size
+{                                                                     // Allocate memory of size mem_size
     if (S->mem_used + mem_size > S->mem_max)
-    {                                                                // In case the code is used within a code base
+    {                                                                 // In case the code is used within a code base
         printf("c out of memory\n");
         exit(0);
     }
-    int *store = (S->DB + S->mem_used);                              // Compute a pointer to the new memory location
-    S->mem_used += mem_size;                                         // Update the size of the used memory
+    int *store = (S->DB + S->mem_used);                               // Compute a pointer to the new memory location
+    S->mem_used += mem_size;                                          // Update the size of the used memory
     return store;
 }
 
@@ -55,81 +55,81 @@ void unassign(struct solver* S, int lit)
 }
 
 void assign(struct solver* S, int* reason, bool forced)
-{                                                                    // Make the first literal of the reason true
-    int lit = reason[0];                                             // Let lit be the first literal in the reason
-    S->fals[-lit] = forced ? IMPLIED : 1;                            // Mark lit as true and IMPLIED if forced
-    *(S->assigned++) = -lit;                                         // Push it on the assignment stack
-    S->reason[abs(lit)] = (int)((reason)-S->DB);                     // Set the reason clause of lit
-    S->model [abs(lit)] = (lit > 0);                                 // Mark the literal as true in the model
+{                                                                     // Make the first literal of the reason true
+    int lit = reason[0];                                              // Let lit be the first literal in the reason
+    S->fals[-lit] = forced ? IMPLIED : 1;                             // Mark lit as true and IMPLIED if forced
+    *(S->assigned++) = -lit;                                          // Push it on the assignment stack
+    S->reason[abs(lit)] = (int)((reason)-S->DB);                      // Set the reason clause of lit
+    S->model [abs(lit)] = (lit > 0);                                  // Mark the literal as true in the model
 }
 
 void restart(struct solver* S)
-{                                                                    // unassign all variables
+{                                                                     // unassign all variables
     while (S->assigned > S->forced)
-        unassign(S, *(--S->assigned));                               // Remove all unforced fals lits from falseStack
-    S->processed = S->forced;                                        // Reset the processed pointer
+        unassign(S, *(--S->assigned));                                // Remove all unforced fals lits from falseStack
+    S->processed = S->forced;                                         // Reset the processed pointer
 }
 
 void addWatch(struct solver* S, int lit, int mem)
 {               
-    S->DB[mem] = S->first[lit];                                      // Add a watch pointer to a clause containing lit
-    S->first[lit] = mem;                                             // By updating the database and the pointers
+    S->DB[mem] = S->first[lit];                                       // Add a watch pointer to a clause containing lit
+    S->first[lit] = mem;                                              // By updating the database and the pointers
 }               
 
 int* addClause(struct solver* S, int* in, int size, int irr) 
-{                                                                    // Adds a clause stored in *in of size size
-    int i, used = S->mem_used;                                       // Store a pointer to the beginning of the clause
-    int* clause = getMemory (S, size + 3) + 2;                       // Allocate memory for the clause in the database
-    if (size >  1)                                                   // Two watch pointers to the datastructure
+{                                                                     // Adds a clause stored in *in of size size
+    int i, used = S->mem_used;                                        // Store a pointer to the beginning of the clause
+    int* clause = getMemory (S, size + 3) + 2;                        // Allocate memory for the clause in the database
+    if (size >  1)                                                    // Two watch pointers to the datastructure
     {
-        addWatch (S, in[0], used  );                                 // If the clause is not unit, then add the first two
+        addWatch (S, in[0], used  );                                  // If the clause is not unit, then add the first two
         addWatch (S, in[1], used+1);
     }
     for (i = 0; i < size; i++)
         clause[i] = in[i];
-    clause[i] = 0;                                                   // Copy the clause from the buffer to the database
-    if (irr)                                                         //// If the clause is from the input, update [mem_fixed]
+    clause[i] = 0;                                                    // Copy the clause from the buffer to the database
+    if (irr)                                                          //// If the clause is from the input, update [mem_fixed]
         S->mem_fixed = S->mem_used;
-    else S->nLemmas++;                                               //// The number of learned clauses increased
+    else S->nLemmas++;                                                //// The number of learned clauses increased
     return clause;
-}                                                                    // Return the pointer to the clause in the database
+}                                                                     // Return the pointer to the clause in the database
 
 void reduceDB(struct solver *S, int k)
-{                                                                    // Removes "less useful" lemmas from DB 
+{                                                                     // Removes "less useful" lemmas from DB 
     while (S->nLemmas > S->maxLemmas)
-        S->maxLemmas += 300;                                         // Allow more lemmas in the future
-    S->nLemmas = 0;                                                  // Reset the number of learned lemmas
+        S->maxLemmas += 300;                                          // Allow more lemmas in the future
+    S->nLemmas = 0;                                                   // Reset the number of learned lemmas
     for (int i = -S->nVars; i <= S->nVars; i++)
-    {                                                                // Loop over the variables
+    {                                                                 // Loop over the variables
         if (i == 0) continue;
-        int *watch = &S->first[i];                                   // Get the pointer to the first watched clause
-        while (*watch >= S->mem_fixed)                               // According to the characteristic of stack
-			*watch =  S->DB[*watch];                                 // Remove the watch if it points to a lemma
+        int *watch = &S->first[i];                                    // Get the pointer to the first watched clause
+        while (*watch >= S->mem_fixed)                                // According to the characteristic of stack
+			*watch =  S->DB[*watch];                                  // Remove the watch if it points to a lemma
     }
     int old_used = S->mem_used;
-    S->mem_used = S->mem_fixed;                                      // Virtually remove all lemmas
+    S->mem_used = S->mem_fixed;                                       // Virtually remove all lemmas
     for (int i = S->mem_fixed + 2; i < old_used; i += 3)
-    {                                                                // While the old memory contains lemmas
-        int count = 0, head = i, lit;                                // Get the lemma to which the head is pointing
-        while ((lit = S->DB[i++]))                                   // Count the number of literals that are satisfied by the current model
+    {                                                                 // While the old memory contains lemmas
+        int count = 0, head = i, lit;                                 // Get the lemma to which the head is pointing
+        while ((lit = S->DB[i++]))                                    // Count the number of literals that are satisfied by the current model
             if ((lit > 0) == S->model[abs(lit)])
                 count++;
-        if (count < k)                                               // If the latter is smaller than k, add it back
+        if (count < k)                                                // If the latter is smaller than k, add it back
             addClause(S, S->DB+head, i-head, 0);
     }
 }
 
-void bump(struct solver* S, int lit)                                 // Move the variable to the front of the decision list and MARK it
+void bump(struct solver* S, int lit)                                  // Move the variable to the front of the decision list and MARK it
 {
     if (S->fals[lit] != IMPLIED)
     {
-        S->fals[lit] = MARK;                                         // MARK the literal as involved if not a top-level unit
+        S->fals[lit] = MARK;                                          // MARK the literal as involved if not a top-level unit
         int var = abs(lit);
-        if (var != S->head)                                          // In case var is not already the head of the list
+        if (var != S->head)                                           // In case var is not already the head of the list
         {
-            S->prev[S->next[var]] = S->prev[var];                    //// Delete [var] from the link
+            S->prev[S->next[var]] = S->prev[var];                     //// Delete [var] from the link
             S->next[S->prev[var]] = S->next[var];                    
-            S->next[S->head] = var;                                  //// Add [var] next to the head, and make it new head
+            S->next[S->head] = var;                                   //// Add [var] next to the head, and make it new head
             S->prev[var] = S->head;
             S->head = var;
         }
@@ -204,116 +204,116 @@ build:                                                                //// Now S
     return addClause(S, S->buffer, size, 0);                          // Add new conflict clause to redundant DB
 }
 
-int propagate(struct solver* S)                                 // Performs unit propagation
+int propagate(struct solver* S)                                       // Performs unit propagation
 {
-    bool forced = S->reason[abs(*S->processed)];                //// Only if no decision was made might [forced] be true
+    bool forced = S->reason[abs(*S->processed)];                      //// Only if no decision was made might [forced] be true
     while (S->processed < S->assigned)
-    {                                                           // While unprocessed false literals
-        int lit = *(S->processed++);                            //// lit is falsified but not propagated yet
-        int *watch = &S->first[lit];                            //// Handle all the clauses watching lit (remove the associating watchers)
+    {                                                                 // While unprocessed false literals
+        int lit = *(S->processed++);                                  //// lit is falsified but not propagated yet
+        int *watch = &S->first[lit];                                  //// Handle all the clauses watching lit (remove the associating watchers)
         while (*watch != END)
-        {                                                       
+        {
             bool unit = true;
-            int *clause = S->DB + *watch;	                    // Get the clause from DB
-            if (clause[-1]==0) clause+=2;                       // Set the pointer to the first literal in the clause
+            int *clause = S->DB + *watch;	                          // Get the clause from DB
+            if (clause[-1]==0) clause+=2;                             // Set the pointer to the first literal in the clause
             else clause++;
-            if (clause[0]==lit) clause[0]=clause[1];            // Ensure that the other watched literal is in front
-            for (int i=2; unit&&clause[i]; i++)                 // Scan the non-watched literals
+            if (clause[0]==lit) clause[0]=clause[1];                  // Ensure that the other watched literal is in front
+            for (int i=2; unit&&clause[i]; i++)                       // Scan the non-watched literals
                 if (!S->fals[clause[i]])
-                {                                               // When clause[i] is not false, it is either true or unset
+                {                                                     // When clause[i] is not false, it is either true or unset
                     unit = false;
                     clause[1] = clause[i];
-					clause[i] = lit;                            //// Finish swapping literals (keep the clause for backtracking)
-                    int store = *watch;                         // Store the old watch
-                    *watch = S->DB[*watch];                     // Remove the watch from the list of lit
+					clause[i] = lit;                                  //// Finish swapping literals (keep the clause for backtracking)
+                    int store = *watch;                               // Store the old watch
+                    *watch = S->DB[*watch];                           // Remove the watch from the list of lit
                     addWatch(S, clause[1], store); 
-                }                                               // Add the watch to the list of clause[1]
+                }                                                     // Add the watch to the list of clause[1]
             if (unit)
             {
-                clause[1] = lit;                                //// At most two literals,and lit is in clause[1]
-                watch = (S->DB + *watch);                       // Place lit at clause[1] and update next watch
-                if (S->fals[-clause[0]]) continue;              // If the other watched literal is satisfied, continue
-                else if (!S->fals[clause[0]])                   //// If the other watched literal is unassigned,
-                    assign(S, clause, forced);                  //// the clause is unit for clause[0], thus assign
-                else                                            //// If the other watched literal is falsified,
-                {                                               //// a conflict is found by clause
-                    if (forced) return UNSAT;                   // Found a root level conflict -> UNSAT
-                    int* lemma = analyze(S, clause);            // Analyze the conflict return a conflict clause
-                    if (!lemma[1]) forced = true;               //// In case the conflict clause is unit set forced flag
+                clause[1] = lit;                                      //// At most two literals,and lit is in clause[1]
+                watch = (S->DB + *watch);                             // Place lit at clause[1] and update next watch
+                if (S->fals[-clause[0]]) continue;                    // If the other watched literal is satisfied, continue
+                else if (!S->fals[clause[0]])                         //// If the other watched literal is unassigned,
+                    assign(S, clause, forced);                        //// the clause is unit for clause[0], thus assign
+                else                                                  //// If the other watched literal is falsified,
+                {                                                     //// a conflict is found by clause
+                    if (forced) return UNSAT;                         // Found a root level conflict -> UNSAT
+                    int* lemma = analyze(S, clause);                  // Analyze the conflict return a conflict clause
+                    if (!lemma[1]) forced = true;                     //// In case the conflict clause is unit set forced flag
                     assign(S, lemma, forced);
                     break;
                 }
             }
         }
-    }                                                                  // Assign the conflict clause as a unit
-    if (forced) S->forced = S->processed;	                           // Set S->forced if applicable
+    }                                                                 // Assign the conflict clause as a unit
+    if (forced) S->forced = S->processed;	                          // Set S->forced if applicable
     return SAT;
 }
 
 int solve(struct solver* S)
-{                                                                      // Determine satisfiability 
+{                                                                     // Determine satisfiability 
     int decision = S->head;
     for (;;)
-    {                                                                  // Main solve loop
-        int old_nLemmas = S->nLemmas;                                  // Store nLemmas to see whether propagate adds lemmas
-        if (propagate(S) == UNSAT) return UNSAT;                       // Propagation returns UNSAT for a root level conflict
+    {                                                                 // Main solve loop
+        int old_nLemmas = S->nLemmas;                                 // Store nLemmas to see whether propagate adds lemmas
+        if (propagate(S) == UNSAT) return UNSAT;                      // Propagation returns UNSAT for a root level conflict
         if (S->nLemmas > old_nLemmas)
-        {                                                              // If the last decision caused a conflict
-            decision = S->head;                                        // Reset the decision heuristic to head
+        {                                                             // If the last decision caused a conflict
+            decision = S->head;                                       // Reset the decision heuristic to head
             if (S->fast > (S->slow / 100) * 125)
-            {                                                          // If fast average is substantially larger than slow average
+            {                                                         // If fast average is substantially larger than slow average
 //				printf("c restarting after ** conflicts (%i %i) %i\n", S->fast, S->slow, S->nLemmas > S->maxLemmas);
                 S->fast = (S->slow / 100) * 125;
-                restart(S);                                            // Restart and update the averages
+                restart(S);                                           // Restart and update the averages
                 if (S->nLemmas > S->maxLemmas)
-					reduceDB(S, 6);                                    // Reduce the DB when it contains too many lemmas
+					reduceDB(S, 6);                                   // Reduce the DB when it contains too many lemmas
             }
         }
-        while (S->fals[decision] || S->fals[-decision])                // As long as the temporay decision is assigned
-            decision = S->prev[decision];                              // Replace it with the next variable in the decision list
-        if (decision == 0) return SAT;                                 // If the end of the list is reached, then a solution is found
-        decision = S->model[decision] ? decision : -decision;          // Otherwise, assign the decision variable based on the model
-        S->fals[-decision] = 1;                                        // Assign the decision literal to true (change to IMPLIED-1?)
-        *(S->assigned++) = -decision;                                  // And push it on the assigned stack
+        while (S->fals[decision] || S->fals[-decision])               // As long as the temporay decision is assigned
+            decision = S->prev[decision];                             // Replace it with the next variable in the decision list
+        if (decision == 0) return SAT;                                // If the end of the list is reached, then a solution is found
+        decision = S->model[decision] ? decision : -decision;         // Otherwise, assign the decision variable based on the model
+        S->fals[-decision] = 1;                                       // Assign the decision literal to true (change to IMPLIED-1?)
+        *(S->assigned++) = -decision;                                 // And push it on the assigned stack
         decision = abs(decision);
-        S->reason[decision] = 0;                                       // Decisions have no reason clauses
+        S->reason[decision] = 0;                                      // Decisions have no reason clauses
     }
 }
 
 void initCDCL(struct solver* S, int n, int m)
 {
-    if (n < 1)      n = 1;                                // The code assumes that there is at least one variable
-    S->nVars          = n;                                // Set the number of variables
-    S->nClauses       = m;                                // Set the number of clauses
-    S->mem_max        = 1 << 30;                          // Set the initial maximum memory
-    S->mem_used       = 0;                                // The number of integers allocated in the DB
-    S->nLemmas        = 0;                                // The number of learned clauses -- redundant means learned
-    S->nConflicts     = 0;                                // Number of conflicts used to update scores
-    S->maxLemmas      = 2000;                             // Initial maximum number of learned clauses
-    S->fast = S->slow = 1 << 24;                          // Initialize the fast and slow moving averages
+    if (n < 1)      n = 1;                                            // The code assumes that there is at least one variable
+    S->nVars          = n;                                            // Set the number of variables
+    S->nClauses       = m;                                            // Set the number of clauses
+    S->mem_max        = 1 << 30;                                      // Set the initial maximum memory
+    S->mem_used       = 0;                                            // The number of integers allocated in the DB
+    S->nLemmas        = 0;                                            // The number of learned clauses -- redundant means learned
+    S->nConflicts     = 0;                                            // Number of conflicts used to update scores
+    S->maxLemmas      = 2000;                                         // Initial maximum number of learned clauses
+    S->fast = S->slow = 1 << 24;                                      // Initialize the fast and slow moving averages
 
-    S->DB = (int *) malloc (sizeof (int) * S->mem_max);   // Allocate the initial database
-    S->model       = getMemory (S, n+1);                  // Full assignment of the (Boolean) variables (initially set to fals)
-    S->next        = getMemory (S, n+1);                  // Next variable in the heuristic order
-    S->prev        = getMemory (S, n+1);                  // Previous variable in the heuristic order
-    S->buffer      = getMemory (S, n  );                  // A buffer to store a temporary clause
-    S->reason      = getMemory (S, n+1);                  // Array of clauses
-    S->falseStack  = getMemory (S, n+1);                  // Stack of falsified literals -- this pointer is never changed
-    S->forced      = S->falseStack;                       // Points inside *falseStack at first decision (unforced literal)
-    S->processed   = S->falseStack;                       // Points inside *falseStack at first unprocessed literal
-    S->assigned    = S->falseStack;                       // Points inside *falseStack at last unprocessed literal
-    S->fals        = getMemory (S, 2*n+1); S->fals += n;  // Labels for variables, non-zero means false 
-    S->first       = getMemory (S, 2*n+1); S->first += n; // Offset of the first watched clause （链式栈的栈顶标志）
-    S->DB[S->mem_used++] = 0;                             // Make sure there is a 0 before the clauses are loaded.
+    S->DB = (int *) malloc (sizeof (int) * S->mem_max);               // Allocate the initial database
+    S->model       = getMemory (S, n+1);                              // Full assignment of the (Boolean) variables (initially set to fals)
+    S->next        = getMemory (S, n+1);                              // Next variable in the heuristic order
+    S->prev        = getMemory (S, n+1);                              // Previous variable in the heuristic order
+    S->buffer      = getMemory (S, n  );                              // A buffer to store a temporary clause
+    S->reason      = getMemory (S, n+1);                              // Array of clauses
+    S->falseStack  = getMemory (S, n+1);                              // Stack of falsified literals -- this pointer is never changed
+    S->forced      = S->falseStack;                                   // Points inside *falseStack at first decision (unforced literal)
+    S->processed   = S->falseStack;                                   // Points inside *falseStack at first unprocessed literal
+    S->assigned    = S->falseStack;                                   // Points inside *falseStack at last unprocessed literal
+    S->fals        = getMemory (S, 2*n+1); S->fals += n;              // Labels for variables, non-zero means false 
+    S->first       = getMemory (S, 2*n+1); S->first += n;             // Offset of the first watched clause （链式栈的栈顶标志）
+    S->DB[S->mem_used++] = 0;                                         // Make sure there is a 0 before the clauses are loaded.
 
     for (int i = 1; i <= n; i++)
-    {                                                     // Initialize the main datastructures:
+    {                                                                 // Initialize the main datastructures:
         S->prev[i] = i-1;
-        S->next[i-1] = i;                                 // the double-linked list for variable-move-to-front,
-        S->model[i] = S->fals[-i] = S->fals[i] = 0;       // the model (phase-saving), the fals array,
+        S->next[i-1] = i;                                             // the double-linked list for variable-move-to-front,
+        S->model[i] = S->fals[-i] = S->fals[i] = 0;                   // the model (phase-saving), the fals array,
         S->first[i] = S->first[-i] = END;
-    }                                                     // and first (watch pointers).
-	S->head = n;                                          // Initialize the head of the double-linked list
+    }                                                                 // and first (watch pointers).
+	S->head = n;                                                      // Initialize the head of the double-linked list
 }
 
 static void read_until_new_line (FILE * input)
